@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { motion } from "framer-motion";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, Area, AreaChart
@@ -28,14 +27,14 @@ function AnimatedNumber({ value }) {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
     let start = 0;
-    const end = parseInt(value.toString().replace(/,/g, "").replace("%", ""));
+    const end = parseInt(value.toString().replace(/[^0-9]/g, ""));
     if (isNaN(end)) { setDisplay(value); return; }
     const duration = 1500;
     const step = end / (duration / 16);
     const timer = setInterval(() => {
       start += step;
       if (start >= end) {
-        setDisplay(typeof value === "string" && value.includes("%") ? end + "%" : end.toLocaleString());
+        setDisplay(end.toLocaleString());
         clearInterval(timer);
       } else {
         setDisplay(Math.floor(start).toLocaleString());
@@ -69,6 +68,7 @@ export default function App() {
     const name = getBundlerName(row.bundler);
     bundlerMap[name] = (bundlerMap[name] || 0) + 1;
   });
+
   const bundlerStats = Object.entries(bundlerMap)
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
@@ -82,6 +82,7 @@ export default function App() {
     const key = hour.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     timelineMap[key] = (timelineMap[key] || 0) + 1;
   });
+
   const timeline = Object.entries(timelineMap)
     .map(([time, count]) => ({ time, count }))
     .slice(-24);
@@ -91,152 +92,77 @@ export default function App() {
   const uniqueSenders = new Set(data.map((d) => d.sender)).size;
   const top1 = bundlerStats[0];
   const top1Share = top1 ? ((top1.count / totalOps) * 100).toFixed(1) : 0;
+  const top3Share = bundlerStats.slice(0, 3).reduce((a, b) => a + b.count, 0) / totalOps * 100;
 
   if (loading) return (
-    <div style={{ background: "#000", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+    <div className="loading-screen">
       <div className="grid-bg" />
-      <motion.div
-        animate={{ opacity: [0.3, 1, 0.3], scale: [0.98, 1, 0.98] }}
-        transition={{ repeat: Infinity, duration: 2 }}
-        style={{ color: "#cc0000", fontSize: "1.2rem", fontWeight: 700, letterSpacing: "0.3em", textTransform: "uppercase" }}
-      >
-        Initializing...
-      </motion.div>
-      <motion.div
-        initial={{ width: 0 }}
-        animate={{ width: "200px" }}
-        transition={{ duration: 2, repeat: Infinity }}
-        style={{ height: "2px", background: "linear-gradient(90deg, transparent, #cc0000, transparent)", marginTop: "1rem" }}
-      />
+      <div className="scanline" />
+      <div className="loading-content">
+        <div className="loading-bar" />
+        <div className="loading-text">INITIALIZING SYSTEM</div>
+        <div className="loading-sub">Connecting to Ethereum mainnet...</div>
+      </div>
     </div>
   );
 
   return (
-    <div style={{ background: "#000", minHeight: "100vh", position: "relative" }}>
+    <div className="app">
       <div className="grid-bg" />
       <div className="scanline" />
+      <div className="corner-tl" />
+      <div className="corner-br" />
 
-      {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        style={{
-          borderBottom: "1px solid #cc000033",
-          padding: "1.5rem 3rem",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          position: "sticky",
-          top: 0,
-          background: "rgba(0,0,0,0.9)",
-          backdropFilter: "blur(10px)",
-          zIndex: 100,
-        }}
-      >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <div style={{ width: "3px", height: "24px", background: "#cc0000" }} />
-            <h1 style={{ fontSize: "1.1rem", fontWeight: 800, letterSpacing: "0.15em", textTransform: "uppercase", color: "#fff" }}>
-              ERC-4337 Bundler Monitor
-            </h1>
-          </div>
-          <p style={{ color: "#444", fontSize: "0.75rem", marginTop: "0.3rem", letterSpacing: "0.05em", paddingLeft: "19px" }}>
-            ETHEREUM MAINNET / REAL-TIME ANALYSIS
-          </p>
+      {/* NAV */}
+      <header className="nav">
+        <div className="nav-brand">
+          <div className="nav-accent" />
+          ERC-4337 Bundler Monitor
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <motion.div
-            animate={{ opacity: [1, 0.3, 1] }}
-            transition={{ repeat: Infinity, duration: 1.5 }}
-            style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#cc0000" }}
-          />
-          <span style={{ color: "#cc0000", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.1em" }}>LIVE</span>
+        <div className="nav-status">
+          <div className="nav-dot" />
+          LIVE / ETHEREUM MAINNET
         </div>
-      </motion.header>
+      </header>
 
-      <div style={{ padding: "5rem 3rem 3rem", maxWidth: "1400px", margin: "0 auto" }}>
+      <div className="page">
 
-        {/* Hero */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-        >
-          <p style={{ color: "#cc0000", fontSize: "0.75rem", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: "1rem" }}>
-            Independent Research Tool
-          </p>
-          <h2 style={{ fontSize: "clamp(2rem, 5vw, 4rem)", fontWeight: 900, lineHeight: 1.1, marginBottom: "1.5rem" }}>
+        {/* HERO */}
+        <section className="hero fade-up">
+          <div className="hero-tag">// Independent Research Tool / Ethereum Mainnet</div>
+          <h1 className="hero-title">
             Who Controls<br />
-            <span style={{ color: "#cc0000" }}>Your Transactions?</span>
-          </h2>
-          <p style={{ color: "#666", fontSize: "1rem", maxWidth: "600px", lineHeight: 1.7 }}>
+            <span className="red">Your Transactions?</span>
+          </h1>
+          <p className="hero-sub">
             ERC-4337 smart wallet transactions pass through bundlers before reaching Ethereum.
-            This tool monitors whether bundlers treat all transactions fairly — or manipulate order for profit.
+            This tool monitors whether bundlers treat all transactions fairly —
+            or manipulate ordering for profit.
           </p>
-        </motion.div>
+        </section>
 
-        {/* Metrics */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "1px",
-            background: "#cc000022",
-            border: "1px solid #cc000033",
-            borderRadius: "4px",
-            marginTop: "4rem",
-            overflow: "hidden"
-          }}
-        >
+        {/* STATS */}
+        <div className="stat-grid fade-up delay-1">
           {[
-            { label: "UserOps Analyzed", value: totalOps },
-            { label: "Bundlers Tracked", value: uniqueBundlers },
-            { label: "Unique Senders", value: uniqueSenders },
-            { label: "Top Bundler Share", value: top1Share + "%" },
-          ].map((m, i) => (
-            <motion.div
-              key={m.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 + i * 0.1 }}
-              whileHover={{ background: "#cc000011" }}
-              style={{ padding: "2rem", background: "#0a0a0a", cursor: "default" }}
-            >
-              <div style={{ color: "#444", fontSize: "0.7rem", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "0.8rem" }}>
-                {m.label}
-              </div>
-              <div style={{ fontSize: "2.5rem", fontWeight: 900, color: "#fff" }}>
-                <AnimatedNumber value={m.value} />
-              </div>
-            </motion.div>
+            { index: "// 01", label: "UserOps Analyzed", value: totalOps, sub: "from ethereum mainnet" },
+            { index: "// 02", label: "Bundlers Tracked", value: uniqueBundlers, sub: "active on-chain" },
+            { index: "// 03", label: "Unique Senders", value: uniqueSenders, sub: "smart wallet users" },
+            { index: "// 04", label: "Top Bundler Share", value: top1Share + "%", sub: top1?.name?.toLowerCase() || "" },
+          ].map((s) => (
+            <div key={s.label} className="stat-cell">
+              <div className="stat-index">{s.index}</div>
+              <div className="stat-label">{s.label}</div>
+              <div className="stat-value"><AnimatedNumber value={s.value} /></div>
+              <div className="stat-sub">{s.sub}</div>
+            </div>
           ))}
-        </motion.div>
+        </div>
 
-        {/* Charts */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "1px",
-          background: "#cc000022",
-          border: "1px solid #cc000033",
-          borderRadius: "4px",
-          marginTop: "1px",
-          overflow: "hidden"
-        }}>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            style={{ padding: "2rem", background: "#0a0a0a" }}
-          >
-            <p style={{ color: "#444", fontSize: "0.7rem", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "1.5rem" }}>
-              Bundler Market Share
-            </p>
-            <ResponsiveContainer width="100%" height={280}>
+        {/* CHARTS */}
+        <div className="chart-grid fade-up delay-2">
+          <div className="panel">
+            <div className="panel-title">// Bundler Market Share</div>
+            <ResponsiveContainer width="100%" height={260}>
               <BarChart data={bundlerStats} margin={{ top: 5, right: 5, left: -25, bottom: 70 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#111" vertical={false} />
                 <XAxis dataKey="name" tick={{ fill: "#444", fontSize: 11 }} angle={-40} textAnchor="end" />
@@ -245,18 +171,11 @@ export default function App() {
                 <Bar dataKey="count" fill="#cc0000" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.9 }}
-            style={{ padding: "2rem", background: "#0a0a0a" }}
-          >
-            <p style={{ color: "#444", fontSize: "0.7rem", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "1.5rem" }}>
-              Activity Timeline
-            </p>
-            <ResponsiveContainer width="100%" height={280}>
+          <div className="panel">
+            <div className="panel-title">// Activity Timeline</div>
+            <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={timeline} margin={{ top: 5, right: 5, left: -25, bottom: 70 }}>
                 <defs>
                   <linearGradient id="redGrad" x1="0" y1="0" x2="0" y2="1">
@@ -271,56 +190,33 @@ export default function App() {
                 <Area type="monotone" dataKey="count" stroke="#cc0000" strokeWidth={2} fill="url(#redGrad)" />
               </AreaChart>
             </ResponsiveContainer>
-          </motion.div>
+          </div>
         </div>
 
-        {/* Alert */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 1 }}
-          style={{
-            marginTop: "1px",
-            padding: "1.5rem 2rem",
-            background: top1Share > 40 ? "#1a0000" : "#001a00",
-            border: `1px solid ${top1Share > 40 ? "#cc000066" : "#00cc0066"}`,
-            borderRadius: "4px",
-            display: "flex",
-            alignItems: "center",
-            gap: "1rem",
-          }}
-        >
-          <div style={{ width: "3px", height: "40px", background: top1Share > 40 ? "#cc0000" : "#00cc00", flexShrink: 0 }} />
+        {/* ALERT */}
+        <div className={`alert-box fade-up delay-3 ${top1Share > 40 ? "alert-danger" : "alert-safe"}`}>
+          <div className="alert-bar" />
           <div>
-            <div style={{ fontWeight: 700, fontSize: "0.85rem", color: top1Share > 40 ? "#cc0000" : "#00cc00", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-              {top1Share > 40 ? "Concentration Risk Detected" : "Healthy Distribution"}
+            <div className="alert-head">
+              {top1Share > 40 ? "CONCENTRATION RISK DETECTED" : "HEALTHY DISTRIBUTION"}
             </div>
-            <div style={{ color: "#555", fontSize: "0.85rem", marginTop: "0.3rem" }}>
-              {top1 ? `${top1.name} controls ${top1Share}% of all UserOps — ${top1Share > 40 ? "significant centralization detected" : "no single bundler dominates the network"}` : "Collecting data..."}
+            <div className="alert-body">
+              {top1 ? `${top1.name} controls ${top1Share}% of all UserOps. Top 3 bundlers combined: ${top3Share.toFixed(1)}%. ${top1Share > 40 ? "Significant centralization detected." : "No single bundler dominates the network."}` : "Collecting data..."}
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Table */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.1 }}
-          style={{ marginTop: "1px", background: "#0a0a0a", border: "1px solid #cc000033", borderRadius: "4px", overflow: "hidden" }}
-        >
-          <div style={{ padding: "1.5rem 2rem", borderBottom: "1px solid #cc000022" }}>
-            <p style={{ color: "#444", fontSize: "0.7rem", letterSpacing: "0.15em", textTransform: "uppercase" }}>
-              Recent UserOperations
-            </p>
+        {/* TABLE */}
+        <div className="data-panel fade-up delay-3">
+          <div className="data-panel-header">
+            <div className="panel-title">// Recent UserOperations</div>
           </div>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table className="data-table">
               <thead>
-                <tr style={{ borderBottom: "1px solid #111" }}>
+                <tr>
                   {["UserOp Hash", "Bundler", "Sender", "Block", "Time"].map((h) => (
-                    <th key={h} style={{ color: "#333", fontSize: "0.7rem", letterSpacing: "0.1em", textTransform: "uppercase", padding: "0.8rem 1.5rem", textAlign: "left", fontWeight: 600 }}>
-                      {h}
-                    </th>
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -328,36 +224,32 @@ export default function App() {
                 {data.slice(0, 20).map((row, i) => (
                   <tr
                     key={row.userophash}
+                    className={activeRow === i ? "active-row" : ""}
                     onMouseEnter={() => setActiveRow(i)}
                     onMouseLeave={() => setActiveRow(null)}
-                    style={{
-                      borderBottom: "1px solid #0d0d0d",
-                      background: activeRow === i ? "#cc000008" : "transparent",
-                      cursor: "default",
-                      transition: "background 0.15s",
-                    }}
                   >
-                    <td style={{ color: "#444", fontSize: "0.8rem", padding: "0.9rem 1.5rem", fontFamily: "monospace" }}>{row.userophash?.slice(0, 20)}...</td>
-                    <td style={{ color: "#cc0000", fontSize: "0.8rem", padding: "0.9rem 1.5rem", fontWeight: 600 }}>{getBundlerName(row.bundler)}</td>
-                    <td style={{ color: "#444", fontSize: "0.8rem", padding: "0.9rem 1.5rem", fontFamily: "monospace" }}>{row.sender?.slice(0, 16)}...</td>
-                    <td style={{ color: "#444", fontSize: "0.8rem", padding: "0.9rem 1.5rem" }}>{row.blocknumber}</td>
-                    <td style={{ color: "#444", fontSize: "0.8rem", padding: "0.9rem 1.5rem" }}>{row.blocktimestamp ? new Date(row.blocktimestamp * 1000).toLocaleTimeString() : "-"}</td>
+                    <td className="mono">{row.userophash?.slice(0, 20)}...</td>
+                    <td className="red-text">{getBundlerName(row.bundler)}</td>
+                    <td className="mono dim">{row.sender?.slice(0, 16)}...</td>
+                    <td className="dim">{row.blocknumber}</td>
+                    <td className="dim">{row.blocktimestamp ? new Date(row.blocktimestamp * 1000).toLocaleTimeString() : "-"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Footer */}
-        <div style={{ marginTop: "3rem", paddingTop: "2rem", borderTop: "1px solid #cc000022", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ color: "#333", fontSize: "0.75rem", letterSpacing: "0.05em" }}>
-            Data sourced directly from Ethereum mainnet via Alchemy · Updates every 2 minutes
+        {/* FOOTER */}
+        <footer className="footer fade-up delay-4">
+          <span className="footer-left">
+            Data sourced from Ethereum mainnet via Alchemy &nbsp;·&nbsp; Updates every 10 minutes &nbsp;·&nbsp; {totalOps.toLocaleString()} UserOps collected
           </span>
-          <a href="https://github.com/kridaygupta0907-hue/erc4337-bundler-monitor" style={{ color: "#cc0000", fontSize: "0.75rem", textDecoration: "none", letterSpacing: "0.1em" }}>
+          <a href="https://github.com/Operant7-lang/erc4337-bundler-monitor" className="footer-link">
             VIEW SOURCE
           </a>
-        </div>
+        </footer>
+
       </div>
     </div>
   );
